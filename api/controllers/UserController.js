@@ -58,14 +58,25 @@ class UserController extends GlobalController {
                 { expiresIn: '2h' }
             );
 
-            res.cookie('authToken', token, {
-                httpOnly: true,        // Prevents XSS attacks
-                secure: true, // HTTPS only in production
-                sameSite: 'none',    // CSRF protection
-                maxAge: 2 * 60 * 60 * 1000  // 2 hours in milliseconds
-            });
+            const isProduction = process.env.NODE_ENV === 'production';
+            const isDevelopment = process.env.NODE_ENV === 'development';
 
-            // Return success response
+            const cookieSettings = {
+                httpOnly: true,
+                maxAge: 2 * 60 * 60 * 1000, // 2 hours
+                path: '/',
+            };
+
+            if (isProduction && !isDevelopment) {
+                cookieSettings.secure = true;
+                cookieSettings.sameSite = 'none';
+            } else {
+                cookieSettings.secure = false;
+                cookieSettings.sameSite = 'strict';
+            }
+
+            res.cookie('authToken', token, cookieSettings);
+
             res.status(200).json({
                 message: "Inicio de sesión exitoso",
                 token: token

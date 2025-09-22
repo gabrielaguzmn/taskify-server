@@ -1,9 +1,10 @@
 const express = require("express");
 const router = express.Router();
-
+const authMiddleware = require("../middleware/authMiddleware")
 const UserController = require("../controllers/UserController");
-router.get("/me", (req, res)=> UserController.myInformation(req, res))
-router.put("/me", (req, res)=> UserController.editMyInfo(req, res))
+
+router.get("/me", authMiddleware, (req, res)=> UserController.myInformation(req, res))
+router.put("/me", authMiddleware, (req, res)=> UserController.editMyInfo(req, res))
 /**
  * @route GET /users
  * @description Retrieve all users.

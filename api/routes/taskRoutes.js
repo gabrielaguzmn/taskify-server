@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const TaskController = require("../controllers/TaskController");
+const authMiddleware = require("../middleware/authMiddleware");
 
 /**
  * @route GET /tasks
@@ -29,7 +30,7 @@ router.get("/:id", (req, res) => TaskController.read(req, res));
  */
 router.post("/", (req, res) => TaskController.create(req, res));
 
-router.put("/editTask/:id", (req, res) => TaskController.editTask(req, res));
+router.put("/editTask/:id",authMiddleware, (req, res) => TaskController.editTask(req, res));
 /**
  * @route PUT /tasks/:id
  * @description Update an existing task by ID.
@@ -55,7 +56,7 @@ router.delete("/:id", (req, res) => TaskController.delete(req, res));
  * @description add a task .
  * @access Public
  */
-router.post("/addTask", (req, res) => TaskController.create(req, res));
+router.post("/addTask", authMiddleware,(req, res) => TaskController.create(req, res));
 
 /**
  * @route get /tasks/userTask/:id
@@ -64,7 +65,7 @@ router.post("/addTask", (req, res) => TaskController.create(req, res));
  * @access Public
  */
 
-router.get("/userTask/:userId", (req, res) => TaskController.readByUser(req, res));
+router.get("/userTask/:userId", authMiddleware,(req, res) => TaskController.readByUser(req, res));
 
 /**
  * Export the router instance to be mounted in the main routes file.
