@@ -171,19 +171,15 @@ class UserController extends GlobalController {
             });
         }
     };
-    // ...existing code...
+
     changePassword = async (req, res) => {
         try {
             const { token, newPassword } = req.body;
             const users = await this.dao.getAll();
-
-            console.log("Received token:", token);
-            console.log("User:", users.filter(u => u.resetPasswordToken == token))
             const user = users.find(u =>
                 u.resetPasswordToken === token && new Date(u.resetPasswordExpires) > new Date()
             );
 
-            // Find user by reset token
             if (!user) {
                 return res.status(400).json({
                     message: "Invalid or expired reset token"
@@ -201,10 +197,7 @@ class UserController extends GlobalController {
                 });
             }
 
-            // Hash new password
             const hashedPassword = await bcrypt.hash(newPassword, 12);
-
-            // Update user password and clear reset token
             await this.dao.update(user._id, {
                 password: hashedPassword,
                 resetPasswordToken: null,
@@ -225,56 +218,56 @@ class UserController extends GlobalController {
 
     editMyInfo = async (req, res) => {
         try {
-                        const token = req.cookies.authToken; 
+            const token = req.cookies.authToken;
 
-            const { name, lastName, age, email} = req.body
-            // const token = req.cookies.authToken;
+            const { name, lastName, age, email } = req.body
             const user = decodeJWT(token)
 
-        if (!token){
-return res.status(401).json({ 
-                message: 'Access token required' 
-            });        }
-
-            if(!name || !lastName) {
-                return res.status(404).json({ 
-                message: 'Fill all the fields' 
-            });
+            if (!token) {
+                return res.status(401).json({
+                    message: 'Access token required'
+                });
             }
 
-            const updatedUser = await this.dao.update( user.id, {
+            if (!name || !lastName) {
+                return res.status(404).json({
+                    message: 'Fill all the fields'
+                });
+            }
+
+            const updatedUser = await this.dao.update(user.id, {
                 name: name, lastName: lastName, age: age, email: email
             })
 
-res.status(200).json({
-            message: "User has been successfully updated",
-            user: updatedUser
-        });
-       }
-catch (error){
-    console.error("An error has occured updating the User", error)
-}
-    }
-    myInformation = async (req, res) => {
-        try{
-            const token = req.cookies.authToken; 
-            const user = decodeJWT(token);
-// If it doesnt find a token then it will return an error bc its not logged in
-        if (!token) {
-            return res.status(401).json({ 
-                message: 'Access token required' 
+            res.status(200).json({
+                message: "User has been successfully updated",
+                user: updatedUser
             });
         }
+        catch (error) {
+            console.error("An error has occured updating the User", error)
+        }
+    }
+    myInformation = async (req, res) => {
+        try {
+            const token = req.cookies.authToken;
+            if (!token) {
+                return res.status(401).json({
+                    message: 'Access token required'
+                });
+            }
+            const user = decodeJWT(token);
+
 
             const userRead = await this.dao.read(user.id);
             res.status(200).json(userRead);
 
 
-        }catch (error){
+        } catch (error) {
             console.error("Error retrieving user data:", error);
-        res.status(500).json({
-            message: "Internal server error"
-        });
+            res.status(500).json({
+                message: "Internal server error"
+            });
 
         }
     }
@@ -282,20 +275,20 @@ catch (error){
 
 
 function decodeJWT(token) {
-  try {
-    const payload = token.split('.')[1];
-    const decoded = JSON.parse(atob(payload));
+    try {
+        const payload = token.split('.')[1];
+        const decoded = JSON.parse(atob(payload));
 
-    // Return user object from token payload
-    return {
-      id: decoded.id || decoded.userId || decoded._id,
-      email: decoded.email,
-      // Add other fields your token contains
-    };
-  } catch (error) {
-    console.error("Error decoding JWT:", error);
-    return null;
-  }
+        // Return user object from token payload
+        return {
+            id: decoded.id || decoded.userId || decoded._id,
+            email: decoded.email,
+            // Add other fields your token contains
+        };
+    } catch (error) {
+        console.error("Error decoding JWT:", error);
+        return null;
+    }
 }
 
 /**
