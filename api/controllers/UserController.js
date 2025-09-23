@@ -282,6 +282,15 @@ class UserController extends GlobalController {
 
         }
     }
+
+    logout = async (req, res) => {
+        res.clearCookie('authToken', {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'none'
+        });
+        return res.status(200).json({ message: 'Logged out successfully' });
+    }
 }
 
 
