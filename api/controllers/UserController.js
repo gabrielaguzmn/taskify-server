@@ -1,5 +1,6 @@
 const GlobalController = require("./GlobalController");
 const UserDAO = require("../dao/UserDAO");
+const TaskDAO = require("../dao/TaskDAO"); 
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 const { sendPasswordResetEmail, sendWelcomeEmail } = require('../utils/emailService');
@@ -120,6 +121,32 @@ class UserController extends GlobalController {
         }
     };
 
+    async delete(req, res) {
+        try {
+        const { id } = req.params;
+
+        // Eliminar usuario
+        const deletedUser = await this.dao.delete(id);
+        if (!deletedUser) {
+            return res.status(404).json({ message: "Usuario no encontrado" });
+        }
+
+        // Eliminar todas las tareas del usuario
+        await TaskDAO.model.deleteMany({ userId: id });
+
+        return res.status(200).json({
+            message: "Usuario y sus tareas eliminados exitosamente",
+            id,
+        });
+        } catch (error) {
+        console.error("Error en UserController.delete:", error);
+        res.status(500).json({
+            message: "Error eliminando usuario y sus tareas",
+            error: error.message,
+        });
+        }
+    }
+
     requestPasswordReset = async (req, res) => {
     try {
         const { email } = req.body;
@@ -170,6 +197,7 @@ class UserController extends GlobalController {
             message: "Internal server error"
         });
     }
+    
 };    
 // ...existing code...
 changePassword = async (req, res) => {
