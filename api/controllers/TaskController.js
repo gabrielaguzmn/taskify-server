@@ -27,12 +27,12 @@ class TaskController extends GlobalController{
             })
             
             res.status(200).json({
-            message: "Task has been successfully updated",
+            message: "Tarea editada exitosamente",
             task: updatedTask
         });
 
         } catch (error){
-            console.error("Edit task error:", error);
+            console.error("Error editando la tarea:", error);
         }
     }
     
