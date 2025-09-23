@@ -2,7 +2,7 @@ const GlobalController = require("./GlobalController");
 const UserDAO = require("../dao/UserDAO");
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
-const { sendPasswordResetEmail, sendWelcomeEmail } = require('../utils/emailService');
+const { sendPasswordResetEmail} = require('../utils/emailService');
 const crypto = require('crypto');
 
 
@@ -232,6 +232,10 @@ class UserController extends GlobalController {
             const token = req.cookies.authToken;
 
             const { name, lastName, age, email } = req.body
+            const users = await this.dao.getAll();
+
+            const foundEmail = users.find(u =>
+                u.email === email);
             const user = decodeJWT(token)
 
             if (!token) {
@@ -244,6 +248,12 @@ class UserController extends GlobalController {
                 return res.status(404).json({
                     message: 'Completa todos los campos necesarios'
                 });
+            }
+
+            if (foundEmail){
+                return res.status(404).json({
+                    message: "El email ingresado ya esta registrado"
+                })
             }
 
             const updatedUser = await this.dao.update(user.id, {
