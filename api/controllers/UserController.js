@@ -2,7 +2,7 @@ const GlobalController = require("./GlobalController");
 const UserDAO = require("../dao/UserDAO");
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
-const { sendPasswordResetEmail, sendWelcomeEmail } = require('../utils/emailService');
+const { sendPasswordResetEmail} = require('../utils/emailService');
 const crypto = require('crypto');
 
 
@@ -137,7 +137,7 @@ class UserController extends GlobalController {
 
             if (!email) {
                 return res.status(400).json({
-                    message: "Email is required"
+                    message: "El email es requerido"
                 });
             }
 
@@ -167,18 +167,18 @@ class UserController extends GlobalController {
             if (!emailResult.success) {
                 console.error('Failed to send reset email:', emailResult.error);
                 return res.status(500).json({
-                    message: "Error sending email. Please try again later."
+                    message: "Error enviando email de recuperación. Intente de nuevo mas tarde"
                 });
             }
 
             res.status(200).json({
-                message: "The link for the recover password has been sent"
+                message: "El link para la recuperacion de contraseña ha sido enviado"
             });
 
         } catch (error) {
             console.error("Password reset request error:", error);
             res.status(500).json({
-                message: "Internal server error"
+                message: "Error del servidor interno"
             });
         }
     };
@@ -193,7 +193,7 @@ class UserController extends GlobalController {
 
             if (!user) {
                 return res.status(400).json({
-                    message: "Invalid or expired reset token"
+                    message: "Token invalido o vencido"
                 });
             }
 
@@ -216,13 +216,13 @@ class UserController extends GlobalController {
             });
 
             res.status(200).json({
-                message: "Password has been reset successfully"
+                message: "Contraseña actualizada exitosamente"
             });
 
         } catch (error) {
             console.error("Password reset error:", error);
             res.status(500).json({
-                message: "Internal server error"
+                message: "Error interno del servidor"
             });
         }
     };
@@ -232,18 +232,28 @@ class UserController extends GlobalController {
             const token = req.cookies.authToken;
 
             const { name, lastName, age, email } = req.body
+            const users = await this.dao.getAll();
+
+            const foundEmail = users.find(u =>
+                u.email === email);
             const user = decodeJWT(token)
 
             if (!token) {
                 return res.status(401).json({
-                    message: 'Access token required'
+                    message: 'Token de acceso requerido'
                 });
             }
 
             if (!name || !lastName) {
                 return res.status(404).json({
-                    message: 'Fill all the fields'
+                    message: 'Completa todos los campos necesarios'
                 });
+            }
+
+            if (foundEmail){
+                return res.status(404).json({
+                    message: "El email ingresado ya esta registrado"
+                })
             }
 
             const updatedUser = await this.dao.update(user.id, {
@@ -251,7 +261,7 @@ class UserController extends GlobalController {
             })
 
             res.status(200).json({
-                message: "User has been successfully updated",
+                message: "Usuario actualizado exitosamente",
                 user: updatedUser
             });
         }
@@ -264,7 +274,7 @@ class UserController extends GlobalController {
             const token = req.cookies.authToken;
             if (!token) {
                 return res.status(401).json({
-                    message: 'Access token required'
+                    message: 'Token de acceso requerido'
                 });
             }
             const user = decodeJWT(token);
@@ -277,7 +287,7 @@ class UserController extends GlobalController {
         } catch (error) {
             console.error("Error retrieving user data:", error);
             res.status(500).json({
-                message: "Internal server error"
+                message: "Error del servidor interno"
             });
 
         }
@@ -289,7 +299,7 @@ class UserController extends GlobalController {
             secure: true,
             sameSite: 'none'
         });
-        return res.status(200).json({ message: 'Logged out successfully' });
+        return res.status(200).json({ message: 'Sesión cerrada exitosamente' });
     }
 }
 

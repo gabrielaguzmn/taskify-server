@@ -56,7 +56,7 @@ router.delete("/:id", (req, res) => TaskController.delete(req, res));
  * @description add a task .
  * @access Public
  */
-router.post("/addTask", authMiddleware,(req, res) => TaskController.create(req, res));
+router.post("/addTask", authMiddleware,(req, res) => TaskController.addTask(req, res));
 
 /**
  * @route get /tasks/userTask/:id

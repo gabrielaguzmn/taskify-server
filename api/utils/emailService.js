@@ -16,7 +16,7 @@ const sendPasswordResetEmail = async (email, resetToken) => {
     const resetURL = `${process.env.FRONTEND_URL}/#/changePassword?token=${resetToken}`;
 
     const mailOptions = {
-        from: `"Taskify Support" <${process.env.EMAIL_USER}>`,
+        from: `"Taskify Soporte" <${process.env.EMAIL_USER}>`,
         to: email,
         subject: 'Reestablece tu contraseña de Taskify',
         html: `
@@ -112,7 +112,6 @@ const sendPasswordResetEmail = async (email, resetToken) => {
 
     try {
         const info = await transporter.sendMail(mailOptions);
-        console.log('Password reset email sent:', info.messageId);
         return { success: true, messageId: info.messageId };
     } catch (error) {
         console.error('Email sending failed:', error);
