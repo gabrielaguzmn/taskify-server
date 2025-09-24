@@ -277,7 +277,7 @@ class UserController extends GlobalController {
                 });
             }
 
-            if (foundEmail){
+            if (foundEmail && foundEmail._id != user.id){
                 return res.status(404).json({
                     message: "El email ingresado ya esta registrado"
                 })
