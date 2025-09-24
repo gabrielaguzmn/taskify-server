@@ -12,67 +12,99 @@ const createTransporter = () => {
 
 const sendPasswordResetEmail = async (email, resetToken) => {
     const transporter = createTransporter();
-    
+
     const resetURL = `${process.env.FRONTEND_URL}/#/changePassword?token=${resetToken}`;
-    
+
     const mailOptions = {
-        from: `"Taskify Support" <${process.env.EMAIL_USER}>`,
+        from: `"Taskify Soporte" <${process.env.EMAIL_USER}>`,
         to: email,
-        subject: 'Reset Your Taskify Password',
+        subject: 'Reestablece tu contraseña de Taskify',
         html: `
-            <!DOCTYPE html>
+ <!DOCTYPE html>
             <html>
             <head>
-                <style>
-                    .container { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
-                    .header { background-color: #007bff; color: white; padding: 20px; text-align: center; }
-                    .content { padding: 30px 20px; }
-                    .button { 
-                        background-color: #007bff; 
-                        color: white; 
-                        padding: 12px 30px; 
-                        text-decoration: none; 
-                        border-radius: 5px; 
-                        display: inline-block;
-                        margin: 20px 0;
-                    }
-                    .footer { background-color: #f8f9fa; padding: 20px; text-align: center; color: #666; }
-                    .warning { background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
-                </style>
+                <meta charset="UTF-8">
+                <title>Reestablecimiento de contraseña cuenta Taskify</title>
             </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>🔐 Taskify Password Reset</h1>
-                    </div>
-                    
-                    <div class="content">
-                        <h2>Hola!</h2>
-                        <p>We received a request to reset your Taskify account password.</p>
-                        
-                        <p>Click the button below to create a new password:</p>
-                        <a href="${resetURL}" class="button">Reset My Password</a>
-                        
-                        <p>Or copy and paste this link in your browser:</p>
-                        <p style="word-break: break-all; color: #007bff;">${resetURL}</p>
-                        
-                        <div class="warning">
-                            <strong>⚠️ Important:</strong>
-                            <ul>
-                                <li>This link expires in <strong>1 hour</strong></li>
-                                <li>If you didn't request this reset, please ignore this email</li>
-                                <li>Your password won't change until you create a new one</li>
-                            </ul>
-                        </div>
-                        
-                        <p>Need help? Reply to this email and we'll get back to you.</p>
-                    </div>
-                    
-                    <div class="footer">
-                        <p>Best regards,<br><strong>The Taskify Team</strong></p>
-                        <p><small>This is an automated email. Please don't reply to this address.</small></p>
-                    </div>
-                </div>
+            <body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                    <tr>
+                        <td align="center" style="padding: 20px 0;">
+                            <!-- Banner with Logo -->
+                            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                                <tr>
+                                    <td align="center" style="background-color: #14401A; padding: 30px;">
+                                        <!-- Logo dinámico -->
+                                        <img src="cid:logo_image" alt="Taskify Logo" width="150" style="display: block; max-width: 150px; height: auto;">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td align="center" style="padding: 40px 30px 10px 30px;">
+                                        <h1 style="margin: 0; font-size: 28px; color: #14401A; font-weight: 600;">¡Hola!</h1>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td align="center" style="padding: 10px 30px 20px 30px;">
+                                        <p style="margin: 0; font-size: 16px; color: #c5c5c5ff; line-height: 1.6;">
+                                            Hemos recibido tu solicitud de cambio de contraseña para tu cuenta de Taskify.<br>
+                                            Da clic en el siguiente botón para ser redirigido al cambio de contraseña:
+
+                                        </p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td align="center" style="padding: 10px 30px;">
+                                        <!-- <p style="margin: 0 0 25px 0; font-size: 16px; color: #666666;">
+                                            Da clic en el siguiente botón para ser redirigido al cambio de contraseña:
+                                        </p>
+                                        <!-- Botón estilizado -->
+                                        <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+                                            <tr> 
+                                                <td style="border-radius: 8px; background: #14401A; box-shadow: 0 4px 12px rgba(178, 202, 222, 0.3);">
+                                                    <a href="${resetURL}" style="display: inline-block; padding: 16px 32px; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none; border-radius: 8px; transition: all 0.3s ease;">
+                                                        Cambiar mi Contraseña
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 5px 30px;">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 20px 30px;">
+                                        <!-- Aviso de seguridad -->
+                                        <div style="background-color: #fff7ed; border: 1px solid #fb923c; border-radius: 8px; padding: 20px;">
+                                            <p style="margin: 0 0 10px 0; font-weight: bold; color: #ea580c; font-size: 14px;">
+                                                ⚠️ Importante:
+                                            </p>
+                                            <ul style="margin: 5px 0 0 20px; color: #ea580c; font-size: 14px; line-height: 1.5;">
+                                                <li>Este enlace expira en <strong>1 hora</strong></li>
+                                                <li>Si no realizaste esta solicitud, haz caso omiso a este mensaje</li>
+                                                <li>Tu contraseña actual permanece segura hasta que la cambies</li>
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td align="center" style="padding: 30px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
+                                        <p style="margin: 0 0 10px 0; color: #a4b1ac; font-size: 14px;">
+                                            Saludos cordiales,
+                                        </p>
+                                        <p style="margin: 0 0 15px 0; color: #14401A; font-size: 16px; font-weight: 600;">
+                                            El equipo de Taskify
+                                        </p>
+                                        <p style="margin: 0; color: #bbbbbbbb; font-size: 12px;">
+                                            Este es un correo automático, por favor no respondas a esta dirección.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
             </body>
             </html>
         `
@@ -80,7 +112,6 @@ const sendPasswordResetEmail = async (email, resetToken) => {
 
     try {
         const info = await transporter.sendMail(mailOptions);
-        console.log('Password reset email sent:', info.messageId);
         return { success: true, messageId: info.messageId };
     } catch (error) {
         console.error('Email sending failed:', error);
@@ -88,34 +119,6 @@ const sendPasswordResetEmail = async (email, resetToken) => {
     }
 };
 
-const sendWelcomeEmail = async (email, name) => {
-    const transporter = createTransporter();
-    
-    const mailOptions = {
-        from: `"Taskify Team" <${process.env.EMAIL_USER}>`,
-        to: email,
-        subject: 'Welcome to Taskify! 🎉',
-        html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2>Welcome to Taskify, ${name}! 🎉</h2>
-                <p>Thanks for joining us! You're all set to start organizing your tasks.</p>
-                <p><a href="${process.env.FRONTEND_URL}/login" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">Get Started</a></p>
-                <p>If you have any questions, feel free to reach out!</p>
-                <p>Happy organizing!<br>The Taskify Team</p>
-            </div>
-        `
-    };
-
-    try {
-        await transporter.sendMail(mailOptions);
-        return { success: true };
-    } catch (error) {
-        console.error('Welcome email failed:', error);
-        return { success: false };
-    }
-};
-
 module.exports = {
-    sendPasswordResetEmail,
-    sendWelcomeEmail
+    sendPasswordResetEmail
 };

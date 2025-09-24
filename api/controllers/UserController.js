@@ -3,7 +3,7 @@ const UserDAO = require("../dao/UserDAO");
 const TaskDAO = require("../dao/TaskDAO"); 
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
-const { sendPasswordResetEmail, sendWelcomeEmail } = require('../utils/emailService');
+const { sendPasswordResetEmail} = require('../utils/emailService');
 const crypto = require('crypto');
 
 
@@ -52,21 +52,32 @@ class UserController extends GlobalController {
 
             const token = jwt.sign(
                 {
-                    id: user.id,
+                    id: user.id || user._id,
                     email: user.email
                 },
                 process.env.JWT_SECRET,
                 { expiresIn: '2h' }
             );
 
-            res.cookie('authToken', token, {
-                httpOnly: true,        // Prevents XSS attacks
-                secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-                sameSite: 'strict',    // CSRF protection
-                maxAge: 2 * 60 * 60 * 1000  // 2 hours in milliseconds
-            });
+            const isProduction = process.env.NODE_ENV === 'production';
+            const isDevelopment = process.env.NODE_ENV === 'development';
 
-            // Return success response
+            const cookieSettings = {
+                httpOnly: true,
+                maxAge: 2 * 60 * 60 * 1000, // 2 hours
+                path: '/',
+            };
+
+            if (isProduction && !isDevelopment) {
+                cookieSettings.secure = true;
+                cookieSettings.sameSite = 'none';
+            } else {
+                cookieSettings.secure = false;
+                cookieSettings.sameSite = 'strict';
+            }
+
+            res.cookie('authToken', token, cookieSettings);
+
             res.status(200).json({
                 message: "Inicio de sesión exitoso",
                 token: token
@@ -121,135 +132,221 @@ class UserController extends GlobalController {
         }
     };
 
-    async delete(req, res) {
+    async deleteMe(req, res) {
         try {
-        const { id } = req.params;
+            const userId = req.user.id; // viene del token decodificado
 
-        // Eliminar usuario
-        const deletedUser = await this.dao.delete(id);
-        if (!deletedUser) {
-            return res.status(404).json({ message: "Usuario no encontrado" });
-        }
+            console.log("Eliminando usuario con id:", userId);
 
-        // Eliminar todas las tareas del usuario
-        await TaskDAO.model.deleteMany({ userId: id });
+            // Eliminar todas las tareas del usuario
+            await TaskDAO.deleteByUser(userId);
 
-        return res.status(200).json({
-            message: "Usuario y sus tareas eliminados exitosamente",
-            id,
-        });
+            // Eliminar el usuario
+            await this.dao.delete(userId);
+
+            res.clearCookie("authToken"); // cerrar sesión automáticamente
+            return res.status(200).json({
+            message: "Usuario y sus tareas eliminados correctamente"
+            });
         } catch (error) {
-        console.error("Error en UserController.delete:", error);
-        res.status(500).json({
-            message: "Error eliminando usuario y sus tareas",
-            error: error.message,
-        });
+            console.error("Error eliminando usuario:", error); // log completo
+            return res.status(500).json({ 
+            message: "Error eliminando usuario", 
+            error: error.message,   
+            stack: error.stack      
+            });
         }
     }
 
     requestPasswordReset = async (req, res) => {
-    try {
-        const { email } = req.body;
+        try {
+            const { email } = req.body;
 
-        if (!email) {
-            return res.status(400).json({
-                message: "Email is required"
+            if (!email) {
+                return res.status(400).json({
+                    message: "El email es requerido"
+                });
+            }
+
+            const users = await this.dao.getAll();
+            const user = users.find(u => u.email === email);
+
+            // Always return success for security (don't reveal if email exists)
+            if (!user) {
+                return res.status(404).json({
+                    message: "El correo no está registrado"
+                });
+            }
+
+            // Generate secure reset token
+            const resetToken = crypto.randomBytes(32).toString('hex');
+            const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+
+            // Save token to user (you'll need to add these fields to your user schema)
+            await this.dao.update(user.id, {
+                resetPasswordToken: resetToken,
+                resetPasswordExpires: resetTokenExpiry
+            });
+
+            // Send email
+            const emailResult = await sendPasswordResetEmail(email, resetToken);
+
+            if (!emailResult.success) {
+                console.error('Failed to send reset email:', emailResult.error);
+                return res.status(500).json({
+                    message: "Error enviando email de recuperación. Intente de nuevo mas tarde"
+                });
+            }
+
+            res.status(200).json({
+                message: "El link para la recuperacion de contraseña ha sido enviado"
+            });
+
+        } catch (error) {
+            console.error("Password reset request error:", error);
+            res.status(500).json({
+                message: "Error del servidor interno"
             });
         }
+    };
 
-        const users = await this.dao.getAll();
-        const user = users.find(u => u.email === email);
+    changePassword = async (req, res) => {
+        try {
+            const { token, newPassword } = req.body;
+            const users = await this.dao.getAll();
+            const user = users.find(u =>
+                u.resetPasswordToken === token && new Date(u.resetPasswordExpires) > new Date()
+            );
 
-        // Always return success for security (don't reveal if email exists)
-        if (!user) {
-            return res.status(404).json({
-                message: "El correo no está registrado"
+            if (!user) {
+                return res.status(400).json({
+                    message: "Token invalido o vencido"
+                });
+            }
+
+            if (
+                newPassword.length < 8 ||
+                !/[A-Z]/.test(newPassword) ||
+                !/[0-9]/.test(newPassword) ||
+                !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword)
+            ) {
+                return res.status(400).json({
+                    message: "La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial."
+                });
+            }
+
+            const hashedPassword = await bcrypt.hash(newPassword, 12);
+            await this.dao.update(user._id, {
+                password: hashedPassword,
+                resetPasswordToken: null,
+                resetPasswordExpires: null
+            });
+
+            res.status(200).json({
+                message: "Contraseña actualizada exitosamente"
+            });
+
+        } catch (error) {
+            console.error("Password reset error:", error);
+            res.status(500).json({
+                message: "Error interno del servidor"
             });
         }
+    };
 
-        // Generate secure reset token
-        const resetToken = crypto.randomBytes(32).toString('hex');
-        const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+    editMyInfo = async (req, res) => {
+        try {
+            const token = req.cookies.authToken;
 
-        // Save token to user (you'll need to add these fields to your user schema)
-        await this.dao.update(user.id, {
-            resetPasswordToken: resetToken,
-            resetPasswordExpires: resetTokenExpiry
-        });
+            const { name, lastName, age, email } = req.body
+            const users = await this.dao.getAll();
 
-        // Send email
-        const emailResult = await sendPasswordResetEmail(email, resetToken);
+            const foundEmail = users.find(u =>
+                u.email === email);
+            const user = decodeJWT(token)
 
-        if (!emailResult.success) {
-            console.error('Failed to send reset email:', emailResult.error);
-            return res.status(500).json({
-                message: "Error sending email. Please try again later."
+            if (!token) {
+                return res.status(401).json({
+                    message: 'Token de acceso requerido'
+                });
+            }
+
+            if (!name || !lastName) {
+                return res.status(404).json({
+                    message: 'Completa todos los campos necesarios'
+                });
+            }
+
+            if (foundEmail){
+                return res.status(404).json({
+                    message: "El email ingresado ya esta registrado"
+                })
+            }
+
+            const updatedUser = await this.dao.update(user.id, {
+                name: name, lastName: lastName, age: age, email: email
+            })
+
+            res.status(200).json({
+                message: "Usuario actualizado exitosamente",
+                user: updatedUser
             });
         }
-
-        res.status(200).json({
-            message: "The link for the recover password has been sent"
-        });
-
-    } catch (error) {
-        console.error("Password reset request error:", error);
-        res.status(500).json({
-            message: "Internal server error"
-        });
+        catch (error) {
+            console.error("An error has occured updating the User", error)
+        }
     }
-    
-};    
-// ...existing code...
-changePassword = async (req, res) => {
-    try {
-        const { token, newPassword } = req.body;
-                const users = await this.dao.getAll();
+    myInformation = async (req, res) => {
+        try {
+            const token = req.cookies.authToken;
+            if (!token) {
+                return res.status(401).json({
+                    message: 'Token de acceso requerido'
+                });
+            }
+            const user = decodeJWT(token);
 
-console.log("Received token:", token);
-console.log("User:", users.filter(u=> u.resetPasswordToken == token) )
-const user = users.find(u =>
-    u.resetPasswordToken === token && new Date(u.resetPasswordExpires) > new Date()
-);
 
-        // Find user by reset token
-        if (!user) {
-            return res.status(400).json({
-                message: "Invalid or expired reset token"
+            const userRead = await this.dao.read(user.id);
+            res.status(200).json(userRead);
+
+
+        } catch (error) {
+            console.error("Error retrieving user data:", error);
+            res.status(500).json({
+                message: "Error del servidor interno"
             });
-        }
 
-if (
-    newPassword.length < 8 ||
-    !/[A-Z]/.test(newPassword) ||
-    !/[0-9]/.test(newPassword) ||
-    !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword)
-) {
-    return res.status(400).json({
-        message: "La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial."
-    });
+        }
+    }
+
+    logout = async (req, res) => {
+        res.clearCookie('authToken', {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'none'
+        });
+        return res.status(200).json({ message: 'Sesión cerrada exitosamente' });
+    }
 }
 
-        // Hash new password
-        const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-        // Update user password and clear reset token
-        await this.dao.update(user._id, {
-            password: hashedPassword,
-            resetPasswordToken: null,
-            resetPasswordExpires: null
-        });
+function decodeJWT(token) {
+    try {
+        const payload = token.split('.')[1];
+        const decoded = JSON.parse(atob(payload));
 
-        res.status(200).json({
-            message: "Password has been reset successfully"
-        });
-
+        // Return user object from token payload
+        return {
+            id: decoded.id || decoded.userId || decoded._id,
+            email: decoded.email,
+            // Add other fields your token contains
+        };
     } catch (error) {
-        console.error("Password reset error:", error);
-        res.status(500).json({
-            message: "Internal server error"
-        });
+        console.error("Error decoding JWT:", error);
+        return null;
     }
-};}
+}
 
 /**
  * Export a singleton instance of UserController.

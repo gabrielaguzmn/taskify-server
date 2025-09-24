@@ -11,6 +11,13 @@ class TaskDAO extends GlobalDAO{
     constructor(){
         super(Task);
     }
+    async deleteByUser(userId) {
+        try {
+        return await Task.deleteMany({ userId });
+        } catch (error) {
+        throw new Error("Error al eliminar tareas del usuario: " + error.message);
+        }
+    }
 }
 
 module.exports = new TaskDAO();
