@@ -1,5 +1,6 @@
 const GlobalController = require("./GlobalController");
 const UserDAO = require("../dao/UserDAO");
+const TaskDAO = require("../dao/TaskDAO"); 
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 const { sendPasswordResetEmail} = require('../utils/emailService');
@@ -130,6 +131,32 @@ class UserController extends GlobalController {
             });
         }
     };
+
+    async deleteMe(req, res) {
+        try {
+            const userId = req.user.id; // viene del token decodificado
+
+            console.log("Eliminando usuario con id:", userId);
+
+            // Eliminar todas las tareas del usuario
+            await TaskDAO.deleteByUser(userId);
+
+            // Eliminar el usuario
+            await this.dao.delete(userId);
+
+            res.clearCookie("authToken"); // cerrar sesión automáticamente
+            return res.status(200).json({
+            message: "Usuario y sus tareas eliminados correctamente"
+            });
+        } catch (error) {
+            console.error("Error eliminando usuario:", error); // log completo
+            return res.status(500).json({ 
+            message: "Error eliminando usuario", 
+            error: error.message,   
+            stack: error.stack      
+            });
+        }
+    }
 
     requestPasswordReset = async (req, res) => {
         try {

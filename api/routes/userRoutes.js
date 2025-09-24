@@ -1,11 +1,12 @@
 const express = require("express");
 const router = express.Router();
-const authMiddleware = require("../middleware/authMiddleware")
 const UserController = require("../controllers/UserController");
+const authMiddleware = require("../middleware/authMiddleware");
 const User = require("../models/User");
 
 router.get("/me", authMiddleware, (req, res)=> UserController.myInformation(req, res))
 router.put("/me", authMiddleware, (req, res)=> UserController.editMyInfo(req, res))
+router.delete("/me", authMiddleware, (req, res) => UserController.deleteMe(req, res));
 /**
  * @route GET /users
  * @description Retrieve all users.
@@ -57,7 +58,7 @@ router.put("changePasword/:id", (req, res) => UserController.update(req, res));
  * @param {string} id - The unique identifier of the user.
  * @access Public
  */
-router.delete("/:id", (req, res) => UserController.delete(req, res));
+router.delete("/:id/full-delete", (req, res) => UserController.deleteWithTasks(req, res));
 
 /**
  * Export the router instance to be mounted in the main routes file.
