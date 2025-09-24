@@ -2,7 +2,7 @@ const GlobalController = require("./GlobalController");
 const UserDAO = require("../dao/UserDAO");
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
-const { sendPasswordResetEmail, sendWelcomeEmail } = require('../utils/emailService');
+const { sendPasswordResetEmail} = require('../utils/emailService');
 const crypto = require('crypto');
 
 
@@ -58,14 +58,25 @@ class UserController extends GlobalController {
                 { expiresIn: '2h' }
             );
 
-            res.cookie('authToken', token, {
-                httpOnly: true,        // Prevents XSS attacks
-                secure: true, // HTTPS only in production
-                sameSite: 'none',    // CSRF protection
-                maxAge: 2 * 60 * 60 * 1000  // 2 hours in milliseconds
-            });
+            const isProduction = process.env.NODE_ENV === 'production';
+            const isDevelopment = process.env.NODE_ENV === 'development';
 
-            // Return success response
+            const cookieSettings = {
+                httpOnly: true,
+                maxAge: 2 * 60 * 60 * 1000, // 2 hours
+                path: '/',
+            };
+
+            if (isProduction && !isDevelopment) {
+                cookieSettings.secure = true;
+                cookieSettings.sameSite = 'none';
+            } else {
+                cookieSettings.secure = false;
+                cookieSettings.sameSite = 'strict';
+            }
+
+            res.cookie('authToken', token, cookieSettings);
+
             res.status(200).json({
                 message: "Inicio de sesión exitoso",
                 token: token
@@ -126,7 +137,7 @@ class UserController extends GlobalController {
 
             if (!email) {
                 return res.status(400).json({
-                    message: "Email is required"
+                    message: "El email es requerido"
                 });
             }
 
@@ -156,37 +167,33 @@ class UserController extends GlobalController {
             if (!emailResult.success) {
                 console.error('Failed to send reset email:', emailResult.error);
                 return res.status(500).json({
-                    message: "Error sending email. Please try again later."
+                    message: "Error enviando email de recuperación. Intente de nuevo mas tarde"
                 });
             }
 
             res.status(200).json({
-                message: "The link for the recover password has been sent"
+                message: "El link para la recuperacion de contraseña ha sido enviado"
             });
 
         } catch (error) {
             console.error("Password reset request error:", error);
             res.status(500).json({
-                message: "Internal server error"
+                message: "Error del servidor interno"
             });
         }
     };
-    // ...existing code...
+
     changePassword = async (req, res) => {
         try {
             const { token, newPassword } = req.body;
             const users = await this.dao.getAll();
-
-            console.log("Received token:", token);
-            console.log("User:", users.filter(u => u.resetPasswordToken == token))
             const user = users.find(u =>
                 u.resetPasswordToken === token && new Date(u.resetPasswordExpires) > new Date()
             );
 
-            // Find user by reset token
             if (!user) {
                 return res.status(400).json({
-                    message: "Invalid or expired reset token"
+                    message: "Token invalido o vencido"
                 });
             }
 
@@ -201,10 +208,7 @@ class UserController extends GlobalController {
                 });
             }
 
-            // Hash new password
             const hashedPassword = await bcrypt.hash(newPassword, 12);
-
-            // Update user password and clear reset token
             await this.dao.update(user._id, {
                 password: hashedPassword,
                 resetPasswordToken: null,
@@ -212,90 +216,109 @@ class UserController extends GlobalController {
             });
 
             res.status(200).json({
-                message: "Password has been reset successfully"
+                message: "Contraseña actualizada exitosamente"
             });
 
         } catch (error) {
             console.error("Password reset error:", error);
             res.status(500).json({
-                message: "Internal server error"
+                message: "Error interno del servidor"
             });
         }
     };
 
     editMyInfo = async (req, res) => {
         try {
-                        const token = req.cookies.authToken; 
+            const token = req.cookies.authToken;
 
-            const { name, lastName, age, email} = req.body
-            // const token = req.cookies.authToken;
+            const { name, lastName, age, email } = req.body
+            const users = await this.dao.getAll();
+
+            const foundEmail = users.find(u =>
+                u.email === email);
             const user = decodeJWT(token)
 
-        if (!token){
-return res.status(401).json({ 
-                message: 'Access token required' 
-            });        }
-
-            if(!name || !lastName) {
-                return res.status(404).json({ 
-                message: 'Fill all the fields' 
-            });
+            if (!token) {
+                return res.status(401).json({
+                    message: 'Token de acceso requerido'
+                });
             }
 
-            const updatedUser = await this.dao.update( user.id, {
+            if (!name || !lastName) {
+                return res.status(404).json({
+                    message: 'Completa todos los campos necesarios'
+                });
+            }
+
+            if (foundEmail){
+                return res.status(404).json({
+                    message: "El email ingresado ya esta registrado"
+                })
+            }
+
+            const updatedUser = await this.dao.update(user.id, {
                 name: name, lastName: lastName, age: age, email: email
             })
 
-res.status(200).json({
-            message: "User has been successfully updated",
-            user: updatedUser
-        });
-       }
-catch (error){
-    console.error("An error has occured updating the User", error)
-}
-    }
-    myInformation = async (req, res) => {
-        try{
-            const token = req.cookies.authToken; 
-            const user = decodeJWT(token);
-// If it doesnt find a token then it will return an error bc its not logged in
-        if (!token) {
-            return res.status(401).json({ 
-                message: 'Access token required' 
+            res.status(200).json({
+                message: "Usuario actualizado exitosamente",
+                user: updatedUser
             });
         }
+        catch (error) {
+            console.error("An error has occured updating the User", error)
+        }
+    }
+    myInformation = async (req, res) => {
+        try {
+            const token = req.cookies.authToken;
+            if (!token) {
+                return res.status(401).json({
+                    message: 'Token de acceso requerido'
+                });
+            }
+            const user = decodeJWT(token);
+
 
             const userRead = await this.dao.read(user.id);
             res.status(200).json(userRead);
 
 
-        }catch (error){
+        } catch (error) {
             console.error("Error retrieving user data:", error);
-        res.status(500).json({
-            message: "Internal server error"
-        });
+            res.status(500).json({
+                message: "Error del servidor interno"
+            });
 
         }
+    }
+
+    logout = async (req, res) => {
+        res.clearCookie('authToken', {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'none'
+        });
+        return res.status(200).json({ message: 'Sesión cerrada exitosamente' });
     }
 }
 
 
 function decodeJWT(token) {
-  try {
-    const payload = token.split('.')[1];
-    const decoded = JSON.parse(atob(payload));
+    try {
+        const payload = token.split('.')[1];
+        const decoded = JSON.parse(atob(payload));
 
-    // Return user object from token payload
-    return {
-      id: decoded.id || decoded.userId || decoded._id,
-      email: decoded.email,
-      // Add other fields your token contains
-    };
-  } catch (error) {
-    console.error("Error decoding JWT:", error);
-    return null;
-  }
+        // Return user object from token payload
+        return {
+            id: decoded.id || decoded.userId || decoded._id,
+            email: decoded.email,
+            // Add other fields your token contains
+        };
+    } catch (error) {
+        console.error("Error decoding JWT:", error);
+        return null;
+    }
 }
 
 /**

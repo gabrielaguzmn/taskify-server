@@ -1,9 +1,11 @@
 const express = require("express");
 const router = express.Router();
-
+const authMiddleware = require("../middleware/authMiddleware")
 const UserController = require("../controllers/UserController");
-router.get("/me", (req, res)=> UserController.myInformation(req, res))
-router.put("/me", (req, res)=> UserController.editMyInfo(req, res))
+const User = require("../models/User");
+
+router.get("/me", authMiddleware, (req, res)=> UserController.myInformation(req, res))
+router.put("/me", authMiddleware, (req, res)=> UserController.editMyInfo(req, res))
 /**
  * @route GET /users
  * @description Retrieve all users.
@@ -83,5 +85,7 @@ router.post("/login", (req, res) => UserController.login(req, res));
 router.post("/register", (req, res)=> UserController.register(req, res));
 
 router.post("/recover", (req, res) => UserController.requestPasswordReset(req,res)); 
+
+router.post("/logout", (req, res)=> UserController.logout(req, res));
 
 module.exports = router;
